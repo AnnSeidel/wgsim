@@ -226,7 +226,7 @@ void wgsim_print_mutref(const char *name, const kseq_t *ks, mutseq_t *hap1, muts
 	}
 }
 
-void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t N, int dist, int std_dev, int size_l, int size_r)
+void wgsim_core(FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *fpout4, const char *fn, int is_hap, uint64_t N, int dist, int std_dev, int size_l, int size_r)
 {
 	kseq_t *ks;
     mutseq_t rseq[2];
@@ -276,7 +276,7 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t
 			double ran;
 			int d, pos, s[2], is_flip = 0;
 			int n_sub[2], n_indel[2], n_err[2], ext_coor[2], j, k;
-			FILE *fpo[2];
+			FILE *fpo[4];
 
 			do { // avoid boundary failure
 				ran = ran_normal();
@@ -289,9 +289,11 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t
 			// flip or not
 			if (drand48() < 0.5) {
 				fpo[0] = fpout1; fpo[1] = fpout2;
+				fpo[2] = fpout3; fpo[3] = fpout4;
 				s[0] = size[0]; s[1] = size[1];
 			} else {
 				fpo[1] = fpout1; fpo[0] = fpout2;
+				fpo[3] = fpout3; fpo[2] = fpout4;
 				s[1] = size[0]; s[0] = size[1];
 				is_flip = 1;
 			}
@@ -330,6 +332,21 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t
 				continue;
 			}
 
+                        
+
+			int xxx;
+			char *original_read[2];
+			original_read[0] = (char*)calloc(s[0], 1);
+			original_read[1] = (char*)calloc(s[1], 1);
+
+			// keep the original read before introducing sequencing errors
+			for (j = 0; j < 2; ++j) {
+				for (xxx = 0; xxx < s[j]; ++xxx) {
+					original_read[j][xxx] = "ACGTN"[tmp_seq[j][xxx]];
+				}
+				original_read[j][s[j]] = '\0';
+			}
+
 			// generate sequencing errors
 			for (j = 0; j < 2; ++j) {
 				int n_n = 0;
@@ -352,6 +369,8 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t
 				continue;
 			}
 
+                        
+
 			// print
 			for (j = 0; j < 2; ++j) {
 				for (i = 0; i < s[j]; ++i) qstr[i] = Q;
@@ -362,7 +381,16 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t
 				for (i = 0; i < s[j]; ++i)
 					fputc("ACGTN"[(int)tmp_seq[j][i]], fpo[j]);
 				fprintf(fpo[j], "\n+\n%s\n", qstr);
+
+				// write the original true read
+				fprintf(fpo[j + 2], "@%s_%u_%u_%d:%d:%d_%d:%d:%d_%llx/%d\n", ks->name.s, ext_coor[0]+1, ext_coor[1]+1,
+						n_err[0], n_sub[0], n_indel[0], n_err[1], n_sub[1], n_indel[1],
+						(long long)ii, j==0? is_flip+1 : 2-is_flip);
+			        fprintf(fpo[j + 2], "%s", original_read[j]);
+				fprintf(fpo[j + 2], "\n+\n%s\n", qstr);
+
 			}
+			free(original_read[0]); free(original_read[1]);
 		}
 		free(rseq[0].s); free(rseq[1].s);
 	}
@@ -400,6 +428,7 @@ int main(int argc, char *argv[])
 	int64_t N;
 	int dist, std_dev, c, size_l, size_r, is_hap = 0;
 	FILE *fpout1, *fpout2;
+	FILE *fpout3, *fpout4;
 	int seed = -1;
 
 	N = 1000000; dist = 500; std_dev = 50;
@@ -420,9 +449,12 @@ int main(int argc, char *argv[])
 		case 'h': is_hap = 1; break;
 		}
 	}
-	if (argc - optind < 3) return simu_usage();
+	if (argc - optind < 5) return simu_usage();
 	fpout1 = fopen(argv[optind+1], "w");
 	fpout2 = fopen(argv[optind+2], "w");
+	fpout3 = fopen(argv[optind+3], "w");
+	fpout4 = fopen(argv[optind+4], "w");
+
 	if (!fpout1 || !fpout2) {
 		fprintf(stderr, "[wgsim] file open error\n");
 		return 1;
@@ -430,7 +462,7 @@ int main(int argc, char *argv[])
 	if (seed <= 0) seed = time(0)&0x7fffffff;
 	fprintf(stderr, "[wgsim] seed = %d\n", seed);
 	srand48(seed);
-	wgsim_core(fpout1, fpout2, argv[optind], is_hap, N, dist, std_dev, size_l, size_r);
+	wgsim_core(fpout1, fpout2, fpout3, fpout4, argv[optind], is_hap, N, dist, std_dev, size_l, size_r);
 
 	fclose(fpout1); fclose(fpout2);
 	return 0;
