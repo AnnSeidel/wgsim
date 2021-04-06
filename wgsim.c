@@ -237,11 +237,14 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *fpout4, const ch
 	int size[2], Q, max_size;
 	uint8_t *tmp_seq[2];
     mut_t *target;
-
+        
 	l = size_l > size_r? size_l : size_r;
 	qstr = (char*)calloc(l+1, 1);
 	tmp_seq[0] = (uint8_t*)calloc(l+2, 1);
 	tmp_seq[1] = (uint8_t*)calloc(l+2, 1);
+	char *original_read[2];
+        original_read[0] = (char*)calloc(l+2, 1);
+        original_read[1] = (char*)calloc(l+2, 1);
 	size[0] = size_l; size[1] = size_r;
 	max_size = size_l > size_r? size_l : size_r;
 
@@ -335,9 +338,6 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *fpout4, const ch
                         
 
 			int xxx;
-			char *original_read[2];
-			original_read[0] = (char*)calloc(s[0], 1);
-			original_read[1] = (char*)calloc(s[1], 1);
 
 			// keep the original read before introducing sequencing errors
 			for (j = 0; j < 2; ++j) {
@@ -380,6 +380,7 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *fpout4, const ch
 						(long long)ii, j==0? is_flip+1 : 2-is_flip);
 				for (i = 0; i < s[j]; ++i)
 					fputc("ACGTN"[(int)tmp_seq[j][i]], fpo[j]);
+			
 				fprintf(fpo[j], "\n+\n%s\n", qstr);
 
 				// write the original true read
@@ -390,7 +391,7 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *fpout4, const ch
 				fprintf(fpo[j + 2], "\n+\n%s\n", qstr);
 
 			}
-			free(original_read[0]); free(original_read[1]);
+			//free(original_read[0]); free(original_read[1]);
 		}
 		free(rseq[0].s); free(rseq[1].s);
 	}
@@ -398,6 +399,7 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *fpout4, const ch
 	gzclose(fp_fa);
 	free(qstr);
 	free(tmp_seq[0]); free(tmp_seq[1]);
+	free(original_read[0]); free(original_read[1]);
 }
 
 static int simu_usage()
