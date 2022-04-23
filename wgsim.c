@@ -356,8 +356,8 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *fpout4, const ch
 						c = 4;
 						++n_n;
 					} else if (drand48() < ERR_RATE) {
-						// c = (c + (int)(drand48() * 3.0 + 1)) & 3; // random sequencing errors
-						c = (c + 1) & 3; // recurrent sequencing errors
+						c = (c + (int)(drand48() * 3.0 + 1)) & 3; // random sequencing errors
+						//c = (c + 1) & 3; // recurrent sequencing errors
 						++n_err[j];
 					}
 					tmp_seq[j][i] = c;
